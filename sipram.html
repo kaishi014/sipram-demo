@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Informasi Gerakan Pramuka - SIPRAM</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        pramuka: {
+                            green: '#1E3A2B',
+                            greenlight: '#2D5741',
+                            brown: '#4A3525',
+                            brownlight: '#634732',
+                            gold: '#D4AF37',
+                            goldhover: '#B59228',
+                            bg: '#F4F6F4'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- QR Code Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .bg-scout-pattern {
+            background-color: #1E3A2B;
+            background-image: radial-gradient(#D4AF37 0.75px, transparent 0.75px), radial-gradient(#D4AF37 0.75px, #1E3A2B 0.75px);
+            background-size: 30px 30px;
+            background-position: 0 0, 15px 15px;
+            opacity: 0.98;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased text-slate-800 bg-slate-100" 
+      x-data="pramukaApp()">
+
+    <!-- TOP ROLE SWITCHER BAR (Interactive Demo Banner) -->
+    <div class="bg-stone-900 text-white text-xs px-4 py-2 flex flex-wrap items-center justify-between border-b border-stone-800 z-50 sticky top-0 shadow-md">
+        <div class="flex items-center space-x-2 my-1">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="font-bold text-amber-400 uppercase tracking-wider"><i class="fa-solid fa-flask mr-1"></i> Mode Demo Interaktif</span>
+            <span class="hidden md:inline text-stone-400">| Simulasikan Login Peran:</span>
+        </div>
+        <div class="flex items-center space-x-1 sm:space-x-2 my-1 overflow-x-auto">
+            <template x-for="role in rolesList" :key="role.id">
+                <button 
+                    @click="switchRole(role.id)" 
+                    :class="currentRole === role.id ? 'bg-pramuka-gold text-stone-900 font-bold shadow-md' : 'bg-stone-800 text-stone-300 hover:bg-stone-700'"
+                    class="px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 whitespace-nowrap">
+                    <i :class="role.icon"></i>
+                    <span x-text="role.name"></span>
+                </button>
+            </template>
+            <button @click="currentView = 'landing'" 
+                    :class="currentView === 'landing' ? 'bg-emerald-600 text-white font-bold' : 'bg-stone-800 text-stone-300 hover:bg-stone-700'"
+                    class="px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 whitespace-nowrap ml-2 border border-stone-700">
+                <i class="fa-solid fa-globe"></i>
+                <span>Portal Publik</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- FLASH NOTIFICATION TOAST -->
+    <div class="fixed top-12 right-4 z-50 space-y-2 max-w-sm w-full px-4 pointer-events-none">
+        <template x-if="toast.show">
+            <div x-transition:enter="transition ease-out duration-300 transform"
+                 x-transition:enter-start="opacity-0 translate-y-2"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-200 transform"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-2"
+                 :class="toast.type === 'success' ? 'bg-emerald-800 border-amber-400' : 'bg-rose-800 border-rose-400'"
+                 class="pointer-events-auto flex items-center justify-between p-4 text-white rounded-xl shadow-2xl border-l-4">
+                <div class="flex items-center space-x-3">
+                    <i :class="toast.type === 'success' ? 'fa-circle-check text-amber-400' : 'fa-triangle-exclamation text-rose-300'" class="fa-solid text-xl"></i>
+                    <div>
+                        <p class="text-xs font-bold text-amber-300" x-text="toast.title"></p>
+                        <p class="text-xs font-medium" x-text="toast.message"></p>
+                    </div>
+                </div>
+                <button @click="toast.show = false" class="text-white/70 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        </template>
+    </div>
+
+    <!-- MAIN APP CONTENT CONTAINER -->
+    <div class="flex-1 flex flex-col min-h-screen">
+
+        <!-- ========================================================================= -->
+        <!-- PUBLIC LANDING PAGE PORTAL                                                -->
+        <!-- ========================================================================= -->
+        <template x-if="currentView === 'landing'">
+            <div class="bg-slate-50 min-h-screen flex flex-col">
+                <!-- Public Header -->
+                <header class="bg-pramuka-green text-white sticky top-10 z-40 shadow-lg border-b border-amber-500/30">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-full bg-pramuka-gold flex items-center justify-center text-pramuka-green text-xl font-black shadow-inner">⚜</div>
+                            <div>
+                                <h1 class="font-extrabold text-lg leading-tight text-amber-100">KWARTIR RANTING PRAMUKA</h1>
+                                <p class="text-xs text-emerald-200">Sistem Informasi & Hubungan Masyarakat Resmi</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <button @click="currentView = 'dashboard'" class="bg-pramuka-gold hover:bg-pramuka-goldhover text-stone-900 font-bold text-xs sm:text-sm px-4 py-2 rounded-lg transition shadow-md flex items-center space-x-2">
+                                <i class="fa-solid fa-right-to-bracket"></i>
+                                <span>Masuk Dashboard (<span x-text="rolesList.find(r=>r.id===currentRole).name"></span>)</span>
+                            </button>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Hero Section -->
+                <section class="bg-scout-pattern text-white py-16 px-4 sm:px-6 text-center relative overflow-hidden">
+                    <div class="max-w-4xl mx-auto space-y-6 relative z-10">
+                        <span class="inline-block bg-amber-400/20 text-amber-300 border border-amber-400/40 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest">
+                            Sistem Informasi Terpadu Pramuka
+                        </span>
+                        <h2 class="text-3xl sm:text-5xl font-extrabold leading-tight tracking-tight">
+                            Satyaku Kudarmakan, <br><span class="text-pramuka-gold">Darmaku Kubaktikan</span>
+                        </h2>
+                        <p class="text-emerald-100 max-w-2xl mx-auto text-sm sm:text-base">
+                            Portal resmi publikasi kegiatan, galeri terintegrasi, manajemen keanggotaan (KTA), dan transparansi kegiatan pramuka kwartir.
+                        </p>
+                        <div class="pt-4 flex justify-center gap-4">
+                            <a href="#galeri-terbaru" class="bg-amber-400 hover:bg-amber-500 text-stone-900 font-bold text-sm px-6 py-3 rounded-lg shadow-lg transition">
+                                <i class="fa-solid fa-newspaper mr-2"></i>Lihat Berita & Galeri
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Public Live Feed (Quick Posters Published by Humas appear dynamically here) -->
+                <section id="galeri-terbaru" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 class="text-2xl font-extrabold text-pramuka-green">Kabar & Poster Kegiatan Terbaru</h3>
+                            <p class="text-sm text-slate-500">Dipublikasikan secara langsung oleh Divisi Humas</p>
+                        </div>
+                        <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> Live Sync
+                        </span>
+                    </div>
+
+                    <!-- Dynamic Posts Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <template x-for="post in posts" :key="post.id">
+                            <div class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md border border-slate-200 transition flex flex-col">
+                                <div class="relative h-48 bg-slate-200 overflow-hidden">
+                                    <img :src="post.image" :alt="post.title" class="w-full h-full object-cover transform hover:scale-105 transition duration-500">
+                                    <div class="absolute top-3 right-3 bg-pramuka-green/90 text-amber-300 text-xs font-bold px-2.5 py-1 rounded-full shadow">
+                                        <i class="fa-regular fa-calendar mr-1"></i> <span x-text="post.date"></span>
+                                    </div>
+                                </div>
+                                <div class="p-5 flex-1 flex flex-col justify-between space-y-3">
+                                    <div>
+                                        <div class="flex items-center space-x-2 text-xs text-amber-700 font-semibold mb-1">
+                                            <i class="fa-solid fa-user-pen"></i>
+                                            <span x-text="post.author"></span>
+                                        </div>
+                                        <h4 class="font-bold text-slate-800 text-base leading-snug" x-text="post.title"></h4>
+                                        <p class="text-slate-600 text-xs mt-2 line-clamp-3 leading-relaxed" x-text="post.description"></p>
+                                    </div>
+                                    <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                                        <span class="bg-amber-100 text-amber-900 px-2 py-0.5 rounded font-medium" x-text="post.category || 'Kegiatan'"></span>
+                                        <span class="text-emerald-700 font-bold"><i class="fa-solid fa-check-circle text-emerald-500 mr-1"></i> Terverifikasi</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+
+                <!-- Footer -->
+                <footer class="bg-pramuka-brown text-amber-100/80 py-8 text-center text-xs border-t border-amber-900">
+                    <p class="font-bold text-amber-300 mb-1">GERAKAN PRAMUKA INDONESIA</p>
+                    <p>© 2026 Kwarran Pramuka. Tunas Kelapa - Ikhlas Bhakti Bina Bangsa Mansukabukti.</p>
+                </footer>
+            </div>
+        </template>
+
+        <!-- ========================================================================= -->
+        <!-- DASHBOARD SHELL (For all 5 authenticated roles)                            -->
+        <!-- ========================================================================= -->
+        <template x-if="currentView === 'dashboard'">
+            <div x-data="{ isSidebarOpen: false }" class="min-h-screen flex bg-slate-100">
+
+                <!-- SIDEBAR -->
+                <aside :class="isSidebarOpen ? 'translate-x-0' : '-translate-x-full'" 
+                       class="fixed inset-y-0 left-0 z-40 w-64 bg-pramuka-brown text-white transition-transform duration-300 md:translate-x-0 md:static md:inset-0 shadow-2xl flex flex-col justify-between">
+                    <div>
+                        <!-- Sidebar Brand -->
+                        <div class="flex items-center justify-between px-6 py-5 bg-pramuka-green border-b border-emerald-900/50">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-9 h-9 rounded-full bg-pramuka-gold flex items-center justify-center font-bold text-pramuka-green text-lg shadow-md">⚜</div>
+                                <div>
+                                    <span class="font-bold text-amber-100 text-base leading-none block">SIPRAM</span>
+                                    <span class="text-[10px] text-emerald-200 tracking-wider font-semibold uppercase block mt-0.5">Pramuka System</span>
+                                </div>
+                            </div>
+                            <button @click="isSidebarOpen = false" class="md:hidden text-emerald-200 hover:text-white">
+                                <i class="fa-solid fa-xmark text-lg"></i>
+                            </button>
+                        </div>
+
+                        <!-- Active Role Indicator Banner -->
+                        <div class="px-4 py-3 bg-stone-900/60 border-b border-stone-700/50 flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-lg bg-pramuka-gold/20 text-pramuka-gold flex items-center justify-center">
+                                <i :class="rolesList.find(r=>r.id===currentRole).icon" class="text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-[10px] text-amber-300/80 font-bold uppercase tracking-wider">Peran Saat Ini</p>
+                                <p class="text-xs font-bold text-white" x-text="rolesList.find(r=>r.id===currentRole).name"></p>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Navigation Menu Based on Current Role -->
+                        <nav class="mt-4 px-3 space-y-1">
+                            <template x-for="item in activeNavItems" :key="item.id">
+                                <button @click="activeTab = item.id" 
+                                        :class="activeTab === item.id ? 'bg-pramuka-green text-amber-300 font-bold shadow-md border-l-4 border-pramuka-gold' : 'text-stone-300 hover:bg-stone-800 hover:text-white'"
+                                        class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-xs transition">
+                                    <i :class="item.icon" class="w-5 text-center"></i>
+                                    <span x-text="item.label"></span>
+                                </button>
+                            </template>
+                        </nav>
+                    </div>
+
+                    <!-- User Profile Footer -->
+                    <div class="p-4 border-t border-stone-700 bg-stone-900/90 flex items-center justify-between">
+                        <div class="flex items-center space-x-2.5 overflow-hidden">
+                            <img :src="currentUser.avatar" class="w-8 h-8 rounded-full border border-pramuka-gold object-cover">
+                            <div class="truncate">
+                                <p class="text-xs font-bold text-stone-200 truncate" x-text="currentUser.name"></p>
+                                <p class="text-[10px] text-amber-400 truncate" x-text="currentUser.subtext"></p>
+                            </div>
+                        </div>
+                        <button @click="currentView = 'landing'" title="Ke Portal Publik" class="text-stone-400 hover:text-amber-400 p-1.5 transition">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                        </button>
+                    </div>
+                </aside>
+
+                <!-- MAIN WORKSPACE -->
+                <div class="flex-1 flex flex-col overflow-hidden">
+                    
+                    <!-- Mobile Header Bar -->
+                    <header class="bg-pramuka-green text-white px-4 py-3 flex items-center justify-between md:hidden shadow-md">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-pramuka-gold font-bold">⚜ SIPRAM</span>
+                            <span class="text-xs text-emerald-300">/ <span x-text="rolesList.find(r=>r.id===currentRole).name"></span></span>
+                        </div>
+                        <button @click="isSidebarOpen = !isSidebarOpen" class="text-white p-1">
+                            <i class="fa-solid fa-bars text-lg"></i>
+                        </button>
+                    </header>
+
+                    <!-- Workspace Content Area -->
+                    <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+
+                        <!-- ========================================================================= -->
+                        <!-- ROLE 1: SUPER ADMIN DASHBOARD                                            -->
+                        <!-- ========================================================================= -->
+                        <template x-if="currentRole === 'super_admin'">
+                            <div class="space-y-6 max-w-7xl mx-auto">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                    <div>
+                                        <h2 class="text-2xl font-black text-pramuka-green">Pusat Kendali Super Admin</h2>
+                                        <p class="text-xs text-slate-500 mt-1">Manajemen pengguna, audit log, dan pemantauan sistem SIPRAM.</p>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <button @click="showToast('Sistem Operasional', 'Semua layanan server normal dan aman.', 'success')" class="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-2 rounded-lg hover:bg-emerald-200">
+                                            <i class="fa-solid fa-shield-halved mr-1"></i> Cek Status DB
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Metric Cards -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-pramuka-green">
+                                        <p class="text-xs font-bold text-slate-400 uppercase">Total Pengguna</p>
+                                        <p class="text-2xl font-black text-slate-800 mt-1" x-text="adminUsers.length"></p>
+                                    </div>
+                                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-amber-500">
+                                        <p class="text-xs font-bold text-slate-400 uppercase">Poster Terbit</p>
+                                        <p class="text-2xl font-black text-slate-800 mt-1" x-text="posts.length"></p>
+                                    </div>
+                                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-blue-500">
+                                        <p class="text-xs font-bold text-slate-400 uppercase">Aktivitas Terjadwal</p>
+                                        <p class="text-2xl font-black text-slate-800 mt-1" x-text="activities.length"></p>
+                                    </div>
+                                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-purple-500">
+                                        <p class="text-xs font-bold text-slate-400 uppercase">Keamanan RBAC</p>
+                                        <p class="text-xs font-bold text-emerald-600 mt-2"><i class="fa-solid fa-lock mr-1"></i> Middleware Aktif</p>
+                                    </div>
+                                </div>
+
+                                <!-- User Management Table -->
+                                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                                    <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                                        <h3 class="font-bold text-slate-800 text-sm"><i class="fa-solid fa-users-gear mr-2 text-pramuka-green"></i>Daftar Pengguna & Hak Akses (RBAC)</h3>
+                                        <button @click="showToast('Tambah User', 'Form pendaftaran pengguna baru dipanggil.', 'success')" class="bg-pramuka-green text-amber-300 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-pramuka-greenlight">
+                                            + Tambah Akun
+                                        </button>
+                                    </div>
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-left text-xs text-slate-600">
+                                            <thead class="bg-slate-100 text-slate-500 font-bold uppercase">
+                                                <tr>
+                                                    <th class="px-6 py-3">Pengguna</th>
+                                                    <th class="px-6 py-3">Email</th>
+                                                    <th class="px-6 py-3">Role System</th>
+                                                    <th class="px-6 py-3">Status</th>
+                                                    <th class="px-6 py-3 text-right">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-slate-100">
+                                                <template x-for="user in adminUsers" :key="user.id">
+                                                    <tr class="hover:bg-slate-50">
+                                                        <td class="px-6 py-3 font-bold text-slate-800 flex items-center space-x-2">
+                                                            <div class="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-xs" x-text="user.name.charAt(0)"></div>
+                                                            <span x-text="user.name"></span>
+                                                        </td>
+                                                        <td class="px-6 py-3" x-text="user.email"></td>
+                                                        <td class="px-6 py-3">
+                                                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase"
+                                                                  :class="{
+                                                                    'bg-purple-100 text-purple-800': user.role === 'Super Admin',
+                                                                    'bg-amber-100 text-amber-800': user.role === 'Ketua',
+                                                                    'bg-blue-100 text-blue-800': user.role === 'Humas',
+                                                                    'bg-emerald-100 text-emerald-800': user.role === 'Anggota',
+                                                                    'bg-stone-200 text-stone-800': user.role === 'Orang Tua'
+                                                                  }" x-text="user.role">
+                                                            </span>
+                                                        </td>
+                                                        <td class="px-6 py-3">
+                                                            <span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle text-[8px] mr-1"></i>Aktif</span>
+                                                        </td>
+                                                        <td class="px-6 py-3 text-right space-x-2">
+                                                            <button @click="showToast('Ubah Role', 'Memuka dialog edit peranan ' + user.name, 'success')" class="text-slate-400 hover:text-amber-600"><i class="fa-solid fa-pen"></i></button>
+                                                            <button @click="showToast('Reset Akses', 'Instruksi reset password dikirim.', 'success')" class="text-slate-400 hover:text-rose-600"><i class="fa-solid fa-key"></i></button>
+                                                        </td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- ========================================================================= -->
+                        <!-- ROLE 2: KETUA (LEADER / EXECUTIVE DASHBOARD)                             -->
+                        <!-- ========================================================================= -->
+                        <template x-if="currentRole === 'ketua'">
+                            <div class="space-y-6 max-w-7xl mx-auto">
+                                <div class="bg-pramuka-green text-white p-6 rounded-2xl shadow-md border-b-4 border-pramuka-gold flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                                    <div>
+                                        <span class="text-xs text-amber-300 font-bold uppercase tracking-widest">Dashboard Eksekutif Leader</span>
+                                        <h2 class="text-2xl font-black text-amber-100 mt-1">Laporan Ringkasan Kwartir</h2>
+                                        <p class="text-xs text-emerald-200 mt-1">Monitoring statistik keanggotaan, iuran, dan jadwal kegiatan resmi.</p>
+                                    </div>
+                                    <button @click="syncGoogleSheets()" class="bg-pramuka-gold hover:bg-pramuka-goldhover text-stone-900 font-bold text-xs px-4 py-2.5 rounded-xl transition shadow flex items-center space-x-2">
+                                        <i class="fa-solid fa-file-excel"></i>
+                                        <span>Sinkronkan Google Sheets API</span>
+                                    </button>
+                                </div>
+
+                                <!-- Executive Financial & Member Stats -->
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                        <div class="flex justify-between items-center text-slate-400 text-xs font-bold uppercase">
+                                            <span>Kehadiran Rata-Rata</span>
+                                            <i class="fa-solid fa-chart-line text-emerald-600 text-base"></i>
+                                        </div>
+                                        <p class="text-3xl font-black text-pramuka-green mt-3">92.4%</p>
+                                        <p class="text-xs text-emerald-600 font-semibold mt-2"><i class="fa-solid fa-arrow-up mr-1"></i>+4.1% dari bulan lalu</p>
+                                    </div>
+                                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                        <div class="flex justify-between items-center text-slate-400 text-xs font-bold uppercase">
+                                            <span>Kas & Dues Terkumpul</span>
+                                            <i class="fa-solid fa-wallet text-amber-500 text-base"></i>
+                                        </div>
+                                        <p class="text-3xl font-black text-slate-800 mt-3">Rp 14.850.000</p>
+                                        <p class="text-xs text-slate-500 mt-2">Target iuran triwulan II tercapai</p>
+                                    </div>
+                                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                        <div class="flex justify-between items-center text-slate-400 text-xs font-bold uppercase">
+                                            <span>Anggota Aktif</span>
+                                            <i class="fa-solid fa-users text-blue-500 text-base"></i>
+                                        </div>
+                                        <p class="text-3xl font-black text-slate-800 mt-3">148 Scout</p>
+                                        <p class="text-xs text-slate-500 mt-2">Terbagi dalam 12 Regu / Sangga</p>
+                                    </div>
+                                </div>
+
+                                <!-- Activity Log with Google Sheets Sync indicator -->
+                                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h3 class="font-bold text-slate-800 text-base"><i class="fa-solid fa-calendar-check text-pramuka-green mr-2"></i>Jadwal & Agenda Kegiatan Sync</h3>
+                                        <span class="text-xs text-slate-400">Terakhir Sync: <span x-text="lastSyncTime"></span></span>
+                                    </div>
+                                    <div class="space-y-3">
+                                        <template x-for="act in activities" :key="act.id">
+                                            <div class="p-4 rounded-xl border border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                                <div>
+                                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-pramuka-gold/20 text-pramuka-brown uppercase" x-text="act.code"></span>
+                                                    <h4 class="font-bold text-slate-800 text-sm mt-1" x-text="act.title"></h4>
+                                                    <p class="text-xs text-slate-500"><i class="fa-solid fa-location-dot mr-1"></i><span x-text="act.location"></span> • <span x-text="act.date"></span></p>
+                                                </div>
+                                                <span class="px-3 py-1 rounded-full text-xs font-bold"
+                                                      :class="act.status === 'Selesai' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
+                                                      x-text="act.status">
+                                                </span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- ========================================================================= -->
+                        <!-- ROLE 3: HUMAS (QUICK POSTER CMS PUBLISHER)                                -->
+                        <!-- ========================================================================= -->
+                        <template x-if="currentRole === 'humas'">
+                            <div class="space-y-6 max-w-5xl mx-auto">
+                                <div>
+                                    <h2 class="text-2xl font-extrabold text-pramuka-green">Humas Quick Poster CMS</h2>
+                                    <p class="text-xs text-slate-500 mt-1">Form ultra-sederhana untuk menerbitkan dokumentasi kegiatan langsung ke portal publik.</p>
+                                </div>
+
+                                <!-- Quick Poster Creator Card -->
+                                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+                                    <form @submit.prevent="publishPoster()" class="space-y-6">
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Judul Poster / Kegiatan</label>
+                                            <input type="text" x-model="newPost.title" required placeholder="Contoh: Upacara Kemah Bakti Pramuka Penegak 2026" 
+                                                   class="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-pramuka-green focus:border-transparent outline-none">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Ringkasan / Deskripsi Singkat</label>
+                                            <textarea x-model="newPost.description" rows="3" required placeholder="Tuliskan keterangan singkat kegiatan..." 
+                                                      class="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-pramuka-green focus:border-transparent outline-none"></textarea>
+                                        </div>
+
+                                        <!-- Drag and Drop Image Box -->
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Foto Dokumentasi</label>
+                                            <div @click="$refs.photoInput.click()" 
+                                                 class="border-2 border-dashed border-slate-300 hover:border-pramuka-gold bg-slate-50 hover:bg-amber-50/50 rounded-2xl p-8 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[200px]">
+                                                <input type="file" x-ref="photoInput" @change="handleImageUpload($event)" accept="image/*" class="hidden">
+                                                
+                                                <template x-if="!newPost.imagePreview">
+                                                    <div class="space-y-2">
+                                                        <div class="w-12 h-12 rounded-full bg-emerald-100 text-pramuka-green flex items-center justify-center mx-auto text-xl">
+                                                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                                                        </div>
+                                                        <p class="text-xs font-bold text-slate-700">Klik atau Drag & Drop Foto di Sini</p>
+                                                        <p class="text-[10px] text-slate-400">Format JPG, PNG, WebP (Otomatis Kompresi Server)</p>
+                                                    </div>
+                                                </template>
+
+                                                <template x-if="newPost.imagePreview">
+                                                    <div class="relative w-full max-h-60 overflow-hidden rounded-xl">
+                                                        <img :src="newPost.imagePreview" class="w-full h-60 object-cover">
+                                                        <div class="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold">
+                                                            Klik untuk mengganti foto
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+
+                                        <button type="submit" class="w-full bg-pramuka-gold hover:bg-pramuka-goldhover text-stone-900 font-extrabold py-3.5 px-6 rounded-xl transition shadow-md flex items-center justify-center space-x-2">
+                                            <i class="fa-solid fa-paper-plane"></i>
+                                            <span>Terbitkan Poster Sekarang (Live)</span>
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Recent Published Items -->
+                                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                                    <h3 class="font-bold text-slate-800 text-sm mb-4">Poster Yang Anda Terbitkan Hari Ini</h3>
+                                    <div class="divide-y divide-slate-100">
+                                        <template x-for="p in posts.filter(item => item.author === 'Humas Kwarran')" :key="p.id">
+                                            <div class="py-3 flex items-center justify-between">
+                                                <div class="flex items-center space-x-3">
+                                                    <img :src="p.image" class="w-12 h-12 rounded-lg object-cover">
+                                                    <div>
+                                                        <p class="font-bold text-slate-800 text-xs" x-text="p.title"></p>
+                                                        <p class="text-[10px] text-slate-400" x-text="p.date"></p>
+                                                    </div>
+                                                </div>
+                                                <span class="px-2 py-1 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">Terpublikasi</span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- ========================================================================= -->
+                        <!-- ROLE 4: ANGGOTA (SCOUT MEMBER & DIGITAL KTA CARD)                        -->
+                        <!-- ========================================================================= -->
+                        <template x-if="currentRole === 'anggota'">
+                            <div class="space-y-6 max-w-4xl mx-auto">
+                                <div>
+                                    <h2 class="text-2xl font-extrabold text-pramuka-green">Portal Anggota Pramuka</h2>
+                                    <p class="text-xs text-slate-500 mt-1">Kartu Tanda Anggota (KTA) Digital resmi dan modul pelatihan Anda.</p>
+                                </div>
+
+                                <!-- DIGITAL KTA CARD PREVIEW -->
+                                <div class="flex justify-center">
+                                    <div class="w-full max-w-md bg-gradient-to-br from-pramuka-green via-pramuka-greenlight to-pramuka-brown text-white rounded-2xl shadow-2xl p-6 relative overflow-hidden border-2 border-pramuka-gold">
+                                        <!-- Decorative watermark emblem -->
+                                        <div class="absolute -right-8 -bottom-8 opacity-10 text-9xl select-none">⚜</div>
+
+                                        <!-- KTA Header -->
+                                        <div class="flex items-center justify-between border-b border-amber-400/30 pb-4 mb-4">
+                                            <div class="flex items-center space-x-2">
+                                                <div class="w-8 h-8 rounded-full bg-pramuka-gold flex items-center justify-center text-pramuka-green font-black">⚜</div>
+                                                <div>
+                                                    <p class="text-[10px] font-bold text-amber-300 uppercase tracking-widest leading-none">KARTU TANDA ANGGOTA</p>
+                                                    <p class="text-xs font-black text-white">GERAKAN PRAMUKA</p>
+                                                </div>
+                                            </div>
+                                            <span class="bg-amber-400 text-stone-900 text-[10px] font-black px-2 py-0.5 rounded uppercase">Penegak</span>
+                                        </div>
+
+                                        <!-- KTA Body -->
+                                        <div class="flex items-start space-x-4">
+                                            <img :src="currentUser.avatar" class="w-20 h-24 rounded-lg object-cover border-2 border-pramuka-gold shadow-md">
+                                            <div class="flex-1 space-y-1 text-xs">
+                                                <div>
+                                                    <p class="text-[9px] text-emerald-200 uppercase">Nama Lengkap</p>
+                                                    <p class="font-black text-white text-sm" x-text="currentUser.name"></p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-[9px] text-emerald-200 uppercase">NTA (Nomor Tanda Anggota)</p>
+                                                    <p class="font-mono font-bold text-amber-300">12.03.2026.00892</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-[9px] text-emerald-200 uppercase">Gugus Depan / Ambalan</p>
+                                                    <p class="font-medium text-white">Gudep 04.011 - Garuda</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- KTA Footer & QR -->
+                                        <div class="mt-4 pt-3 border-t border-amber-400/30 flex items-center justify-between">
+                                            <div class="text-[9px] text-emerald-100">
+                                                <p>Berlaku Hingga: <span class="font-bold text-amber-300">31 Des 2028</span></p>
+                                                <p class="text-slate-300">Kwarran Bogor Barat</p>
+                                            </div>
+                                            <div class="bg-white p-1 rounded">
+                                                <!-- Mock QR Code -->
+                                                <div class="w-10 h-10 bg-slate-900 flex items-center justify-center text-white text-[8px] text-center font-mono">
+                                                    PRAMUKA
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Schedule & Training Progress -->
+                                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+                                    <h3 class="font-bold text-slate-800 text-sm"><i class="fa-solid fa-graduation-cap text-pramuka-green mr-2"></i>Syarat Kecakapan Umum (SKU) Progress</h3>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between text-xs font-bold">
+                                            <span class="text-slate-700">Tingkat Penegak Bantara</span>
+                                            <span class="text-pramuka-green">75% Selesai</span>
+                                        </div>
+                                        <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                                            <div class="bg-pramuka-green h-full rounded-full" style="width: 75%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- ========================================================================= -->
+                        <!-- ROLE 5: ORANG TUA / WALI (PARENTS PORTAL)                                 -->
+                        <!-- ========================================================================= -->
+                        <template x-if="currentRole === 'orang_tua'">
+                            <div class="space-y-6 max-w-5xl mx-auto">
+                                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-12 h-12 rounded-full bg-amber-100 text-amber-900 flex items-center justify-center text-xl font-bold">
+                                            <i class="fa-solid fa-user-shield"></i>
+                                        </div>
+                                        <div>
+                                            <h2 class="text-xl font-extrabold text-slate-800">Portal Orang Tua & Wali</h2>
+                                            <p class="text-xs text-slate-500">Memantau Ananda: <span class="font-bold text-pramuka-green">Ahmad Fauzi</span> (Gudep Penegak)</p>
+                                        </div>
+                                    </div>
+                                    <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+                                        <i class="fa-solid fa-check-double mr-1"></i> Iuran Lunas
+                                    </span>
+                                </div>
+
+                                <!-- Attendance Status Card -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                                        <h3 class="font-bold text-slate-800 text-sm"><i class="fa-solid fa-user-check text-emerald-600 mr-2"></i>Kehadiran Latihan Minggu Ini</h3>
+                                        <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
+                                            <div>
+                                                <p class="text-xs font-bold text-emerald-900">Sabtu, 24 Oktober 2026</p>
+                                                <p class="text-[10px] text-emerald-700">Latihan Rutin & Sandi Morse</p>
+                                            </div>
+                                            <span class="bg-emerald-600 text-white font-bold text-xs px-2.5 py-1 rounded">HADIR</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                                        <h3 class="font-bold text-slate-800 text-sm"><i class="fa-solid fa-file-signature text-amber-600 mr-2"></i>Izin Perkemahan Mendatang</h3>
+                                        <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between">
+                                            <div>
+                                                <p class="text-xs font-bold text-amber-900">Kemah Bakti Kwartir</p>
+                                                <p class="text-[10px] text-amber-700">12 - 14 November 2026</p>
+                                            </div>
+                                            <button @click="showToast('Izin Disetujui', 'Surat izin ortu telah ditandatangani secara digital.', 'success')" 
+                                                    class="bg-pramuka-green text-amber-300 font-bold text-xs px-3 py-1.5 rounded hover:bg-pramuka-greenlight">
+                                                Setujui Izin
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Restricted Parent Photo Gallery -->
+                                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                                    <h3 class="font-bold text-slate-800 text-sm mb-4"><i class="fa-solid fa-images text-pramuka-brown mr-2"></i>Galeri Foto Khusus Kelompok Ananda</h3>
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        <template x-for="img in parentGallery" :key="img.id">
+                                            <div class="relative group rounded-xl overflow-hidden border border-slate-200">
+                                                <img :src="img.url" class="w-full h-32 object-cover">
+                                                <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition p-2 flex items-end">
+                                                    <p class="text-[10px] text-white font-bold" x-text="img.caption"></p>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                    </main>
+                </div>
+            </div>
+        </template>
+
+    </div>
+
+    <!-- APP SCRIPT LOGIC -->
+    <script>
+        function pramukaApp() {
+            return {
+                currentView: 'landing', // 'landing' or 'dashboard'
+                currentRole: 'humas', // Default active role in demo
+                activeTab: 'main',
+                lastSyncTime: 'Baru saja',
+
+                toast: {
+                    show: false,
+                    title: '',
+                    message: '',
+                    type: 'success'
+                },
+
+                // Roles Definition
+                rolesList: [
+                    { id: 'super_admin', name: 'Super Admin', icon: 'fa-solid fa-user-shield' },
+                    { id: 'ketua', name: 'Ketua / Pembina', icon: 'fa-solid fa-crown' },
+                    { id: 'humas', name: 'Humas (Poster)', icon: 'fa-solid fa-bullhorn' },
+                    { id: 'anggota', name: 'Anggota (KTA)', icon: 'fa-solid fa-id-card' },
+                    { id: 'orang_tua', name: 'Orang Tua / Wali', icon: 'fa-solid fa-people-roof' }
+                ],
+
+                // Role User Personas
+                userProfiles: {
+                    super_admin: { name: 'Kak Budi Santoso', subtext: 'System Administrator', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150' },
+                    ketua: { name: 'Kak Dr. H. Supriyadi', subtext: 'Ketua Kwarran', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150' },
+                    humas: { name: 'Kak Rina Wati', subtext: 'Tim Humas', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150' },
+                    anggota: { name: 'Ahmad Fauzi', subtext: 'Penegak Bantara', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150' },
+                    orang_tua: { name: 'Bpk. Hendra Fauzi', subtext: 'Orang Tua Ahmad', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150' }
+                },
+
+                get currentUser() {
+                    return this.userProfiles[this.currentRole];
+                },
+
+                // Navigation mapping
+                get activeNavItems() {
+                    const navs = {
+                        super_admin: [
+                            { id: 'main', label: 'Ringkasan Sistem', icon: 'fa-solid fa-chart-pie' },
+                            { id: 'users', label: 'Manajemen RBAC', icon: 'fa-solid fa-users-gear' }
+                        ],
+                        ketua: [
+                            { id: 'main', label: 'Dashboard Eksekutif', icon: 'fa-solid fa-chart-line' },
+                            { id: 'sync', label: 'Data Sync Google Sheets', icon: 'fa-solid fa-file-excel' }
+                        ],
+                        humas: [
+                            { id: 'main', label: 'Quick Poster Publisher', icon: 'fa-solid fa-paper-plane' }
+                        ],
+                        anggota: [
+                            { id: 'main', label: 'KTA Digital Saya', icon: 'fa-solid fa-id-card' },
+                            { id: 'sku', label: 'Progres SKU', icon: 'fa-solid fa-graduation-cap' }
+                        ],
+                        orang_tua: [
+                            { id: 'main', label: 'Pemantauan Ananda', icon: 'fa-solid fa-child' }
+                        ]
+                    };
+                    return navs[this.currentRole] || [];
+                },
+
+                // Mock Initial Database Items
+                posts: [
+                    {
+                        id: 1,
+                        title: 'Peringatan Hari Pramuka Ke-65 Kwartir Ranting',
+                        description: 'Upacara khidmat yang diikuti oleh 500 anggota Pramuka Siaga, Penggalang, dan Penegak se-Kwartir.',
+                        image: 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?w=600',
+                        date: '24 Okt 2026',
+                        author: 'Humas Kwarran',
+                        category: 'Berita Resmi'
+                    },
+                    {
+                        id: 2,
+                        title: 'Latihan Gabungan Navigasi Darat & Kompas',
+                        description: 'Kegiatan outdoor pemantapan keterampilan membaca peta topografi untuk Pramuka Penegak.',
+                        image: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600',
+                        date: '18 Okt 2026',
+                        author: 'Humas Kwarran',
+                        category: 'Pelatihan'
+                    }
+                ],
+
+                adminUsers: [
+                    { id: 1, name: 'Kak Budi Santoso', email: 'admin@pramuka.or.id', role: 'Super Admin' },
+                    { id: 2, name: 'Kak Dr. H. Supriyadi', email: 'ketua@pramuka.or.id', role: 'Ketua' },
+                    { id: 3, name: 'Kak Rina Wati', email: 'humas@pramuka.or.id', role: 'Humas' },
+                    { id: 4, name: 'Ahmad Fauzi', email: 'fauzi@pramuka.or.id', role: 'Anggota' },
+                    { id: 5, name: 'Bpk. Hendra Fauzi', email: 'ortu.fauzi@gmail.com', role: 'Orang Tua' }
+                ],
+
+                activities: [
+                    { id: 1, code: 'ACT-001', title: 'Kemah Bakti Penegak', location: 'BUPERTA Cibubur', date: '12-14 Nov 2026', status: 'Terjadwal' },
+                    { id: 2, code: 'ACT-002', title: 'Latihan Sandi & Semaphore', location: 'Sanggar Pramuka', date: '24 Okt 2026', status: 'Selesai' }
+                ],
+
+                parentGallery: [
+                    { id: 1, url: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=300', caption: 'Latihan Kompas' },
+                    { id: 2, url: 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?w=300', caption: 'Upacara Sabtu' }
+                ],
+
+                // Form State for Quick Poster
+                newPost: {
+                    title: '',
+                    description: '',
+                    imagePreview: null
+                },
+
+                // Functions
+                switchRole(roleId) {
+                    this.currentRole = roleId;
+                    this.activeTab = 'main';
+                    this.showToast('Peran Diganti', 'Anda sekarang masuk sebagai ' + this.rolesList.find(r=>r.id===roleId).name, 'success');
+                },
+
+                showToast(title, message, type = 'success') {
+                    this.toast.title = title;
+                    this.toast.message = message;
+                    this.toast.type = type;
+                    this.toast.show = true;
+                    setTimeout(() => { this.toast.show = false; }, 4000);
+                },
+
+                handleImageUpload(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        this.newPost.imagePreview = URL.createObjectURL(file);
+                    }
+                },
+
+                publishPoster() {
+                    if (!this.newPost.title || !this.newPost.description) return;
+
+                    const newEntry = {
+                        id: Date.now(),
+                        title: this.newPost.title,
+                        description: this.newPost.description,
+                        image: this.newPost.imagePreview || 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?w=600',
+                        date: 'Hari Ini',
+                        author: 'Humas Kwarran',
+                        category: 'Quick Poster'
+                    };
+
+                    this.posts.unshift(newEntry);
+                    this.newPost.title = '';
+                    this.newPost.description = '';
+                    this.newPost.imagePreview = null;
+
+                    this.showToast('Poster Terbit Live!', 'Poster Anda langsung muncul di Landing Page publik.', 'success');
+                },
+
+                syncGoogleSheets() {
+                    this.lastSyncTime = new Date().toLocaleTimeString('id-ID');
+                    this.showToast('Google Sheets Synced', 'Data kegiatan & iuran telah disinkronkan dari spreadsheet.', 'success');
+                }
+            }
+        }
+    </script>
+</body>
+</html>
